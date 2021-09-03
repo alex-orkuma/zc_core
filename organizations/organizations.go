@@ -1,56 +1,63 @@
 package organizations
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
-	"strings"
+	"time"
 
+	"github.com/gorilla/mux"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"zuri.chat/zccore/utils"
 )
+
+func GetOrganization(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	collection := "organizations"
+
+	orgId := mux.Vars(r)["id"]
+	objId, _ := primitive.ObjectIDFromHex(orgId)
+
+	save, err := utils.GetMongoDbDocs(collection, bson.M{"_id": objId})
+
+	if err != nil {
+		utils.GetError(err, http.StatusInternalServerError, w)
+		return
+	}
+	utils.GetSuccess("organization retrieved successfully", save, w)
+}
 
 func Create(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// parse form data
-	r.ParseForm()
+	var newOrg Organization
 	collection, user_collection := "organizations", "users"
+	fmt.Println(user_collection)
 
-	// validate required fields
-	// add required params into required array, make an empty array to hold error strings, make map to hold valid form params for creating organization
-	required, empty, form_params := []string{"user_id", "name", "email"}, make([]string, 0), make(map[string]interface{})
-
-	// get the form params
-	form_params["user_id"] = r.FormValue("user_id")
-	form_params["name"] = r.FormValue("name")
-	form_params["email"] = r.FormValue("email")
-
-	// loop through and check for empty required params
-	for _, value := range required {
-		if str, ok := form_params[value].(string); ok {
-			if strings.TrimSpace(str) == "" {
-				empty = append(empty, strings.Join(strings.Split(value, "_"), " "))
-			}
-		} else {
-			empty = append(empty, strings.Join(strings.Split(value, "_"), " "))
-		}
-	}
-	if len(empty) > 0 {
-		utils.GetError(errors.New(strings.Join(empty, ", ")+" required"), http.StatusBadRequest, w)
+	// Try to decode the request body into the struct. If there is an error,
+	// respond to the client with the error message and a 400 status code.
+	err := json.NewDecoder(r.Body).Decode(&newOrg)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// check if organization name is already taken
-	org_filter := make(map[string]interface{})
-	org_filter["name"] = form_params["name"]
-	org, _ := utils.GetMongoDbDoc(collection, org_filter)
-	if org != nil {
-		utils.GetError(errors.New("organization name is already taken"), http.StatusBadRequest, w)
+	// validate that email is not empty and it meets the format
+	if !utils.IsValidEmail(newOrg.Email) {
+		utils.GetError(fmt.Errorf("invalid email format : %s", newOrg.Email), http.StatusInternalServerError, w)
 		return
+	}
+
+	// set default name if name is empty
+	if newOrg.Name == "" {
+		newOrg.Name = "ZuriWorkspace"
 	}
 
 	// confirm if user_id exists
 	user_filter := make(map[string]interface{})
-	user_filter["user_id"] = form_params["user_id"]
+	user_filter["user_id"] = newOrg.CreatorID
 	user, _ := utils.GetMongoDbDoc(user_collection, user_filter)
 	if user == nil {
 		utils.GetError(errors.New("invalid user id"), http.StatusBadRequest, w)
@@ -58,7 +65,16 @@ func Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// save organization
-	save, err := utils.CreateMongoDbDoc(collection, form_params)
+	newOrg.URL = newOrg.Name + ".zuri.chat"
+	newOrg.CreatedAt = time.Now()
+
+	// convert to map object
+	var inInterface map[string]interface{}
+	inrec, _ := json.Marshal(newOrg)
+	json.Unmarshal(inrec, &inInterface)
+
+	// save organization
+	save, err := utils.CreateMongoDbDoc(collection, inInterface)
 	if err != nil {
 		utils.GetError(err, http.StatusInternalServerError, w)
 		return
@@ -78,4 +94,42 @@ func GetOrganizations(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.GetSuccess("organization retrieved successfully", save, w)
+}
+
+func DeleteOrganization(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	orgId := mux.Vars(r)["id"]
+
+	collection := "organizations"
+
+	save, err := utils.DeleteOneMongoDoc(collection, orgId)
+	if err != nil {
+		utils.GetError(err, http.StatusInternalServerError, w)
+		return
+	}
+
+	utils.GetSuccess("organization deleted successfully", save, w)
+}
+
+func UpdateUrl(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	orgId := mux.Vars(r)["id"]
+	requestData := make(map[string]string)
+	if err := utils.ParseJsonFromRequest(r, &requestData); err != nil {
+		utils.GetError(err, http.StatusUnprocessableEntity, w)
+		return
+	}
+	url := requestData["url"]
+
+	collection := "organizations"
+	org_filter := make(map[string]interface{})
+	org_filter["url"] = url
+	update, err := utils.UpdateOneMongoDbDoc(collection, orgId, org_filter)
+	if err != nil {
+		utils.GetError(err, http.StatusInternalServerError, w)
+		return
+	}
+
+	utils.GetSuccess("organization url updated successfully", update, w)
+
 }
