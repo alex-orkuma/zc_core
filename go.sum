@@ -45,8 +45,6 @@ github.com/gomodule/redigo v1.8.4 h1:Z5JUg94HMTR1XpwBaSH4vq3+PNSIykBLxMdglbw10gg
 github.com/gomodule/redigo v1.8.4/go.mod h1:P9dn9mFrCBvWhGE1wpxx6fgq7BAeLBk+UUUzlpkBYO0=
 github.com/google/go-cmp v0.5.2 h1:X2ev0eStA3AbceY54o37/0PQ/UWqKEiiO2dKL5OPaFM=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
-github.com/googollee/go-socket.io v1.6.0 h1:zbz0kEERgeYL/yEu9pBXSIyZEBluiNc2AJaMFmFjIOY=
-github.com/googollee/go-socket.io v1.6.0/go.mod h1:0vGP8/dXR9SZUMMD4+xxaGo/lohOw3YWMh2WRiWeKxg=
 github.com/googollee/go-socket.io v1.6.1 h1:qSaB0rqZOIbHLs94BkZ/Uwgd6+x/GzkdNtc2IEt8Psc=
 github.com/googollee/go-socket.io v1.6.1/go.mod h1:0vGP8/dXR9SZUMMD4+xxaGo/lohOw3YWMh2WRiWeKxg=
 github.com/gorilla/mux v1.8.0 h1:i40aqfkR1h2SlN9hojwV5ZA91wcXFOvkdNIeFDP5koI=
